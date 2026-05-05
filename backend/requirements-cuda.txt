@@ -1,0 +1,13 @@
+# NVIDIA CUDA wheels (Windows/Linux). Requires an NVIDIA GPU + driver.
+# Create the venv first, then run:
+#   pip install -r requirements-cuda.txt
+# Then install the rest of the stack (diffusers, etc.):
+#   pip install -r requirements.txt
+#
+# If you already installed CPU-only torch from PyPI, uninstall first:
+#   pip uninstall -y torch torchvision torchaudio
+
+--extra-index-url https://download.pytorch.org/whl/cu124
+torch==2.6.0+cu124
+torchvision==0.21.0+cu124
+torchaudio==2.6.0+cu124

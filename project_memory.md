@@ -12,6 +12,7 @@
 - **Orchestrator:** `run_stockflow_orchestrator` — `MetadataService` → VRAM release → `generate_base_image` → release → `upscale_image` → save JPEG/PNG path → `append_adobe_stock_row`. Deletes PIL handles and calls `gc` / `empty_cache` between stages.
 - **Metadata & CSV (Phase 1):** `AdobeStockMetadata`, `MetadataService`, `append_adobe_stock_row` unchanged in contract.
 - **Tests:** Unit tests mock `diffusers` / Ollama; `pytest -m integration` runs `tests/integration/test_real_image_gen.py` (skips if no CUDA; set `STOCKFLOW_SDXL_MODEL` to override default `stabilityai/stable-diffusion-xl-base-1.0`).
+- **GPU stack:** Use `backend/requirements-cuda.txt` (PyTorch `2.6.0+cu124`) so `torch.cuda.is_available()` is true; then `pip install -r requirements.txt`. Integration proof image: `tests/integration/output/integration_low_res_proof.png` (gitignored).
 
 ## Next.js frontend
 

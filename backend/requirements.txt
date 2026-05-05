@@ -1,3 +1,6 @@
+# PyTorch: default `pip install -r requirements.txt` pulls CPU wheels from PyPI.
+# For GPU inference / integration tests, install CUDA PyTorch first:
+#   pip install -r requirements-cuda.txt
 fastapi>=0.110.0
 uvicorn[standard]>=0.29.0
 pytest>=8.0.0
