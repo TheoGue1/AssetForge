@@ -2,16 +2,16 @@
 
 ## Last updated
 
-- **2026-05-05** — Phase 1 backend: Pydantic metadata, Ollama metadata service (mocked in tests), CSV manifest.
+- **2026-05-05** — Phase 2: SDXL `ImageGeneratorService`, bicubic `UpscalerService` (swappable backend), `run_stockflow_orchestrator` wiring metadata → base → upscale → save → CSV; integration test for real SDXL (CUDA only).
 
 ## Backend ML pipeline
 
-- **Current:** No diffusion pipeline yet (Phase 2). Metadata path only.
-- **Models (planned):** Local SDXL/Cascade via `diffusers`; local LLM via Ollama for JSON metadata.
-- **Implemented:**
-  - `AdobeStockMetadata` — `title` ≤200 chars; **exactly** 50 keywords; integer `category`; optional `releases`.
-  - `MetadataService.generate_metadata` — `ollama.chat` with a strict JSON-only system prompt; retries parse/validation up to `max_parse_attempts`; raises `MalformedMetadataResponseError` or `OllamaTransportError` (no real Ollama in unit tests — fully mocked).
-  - `append_adobe_stock_row` — writes headers `Filename,Title,Keywords,Category,Releases` once; appends rows; `csv` module quotes fields (commas in titles).
+- **Image request:** `ImageGenRequest` — `prompt`, `width`/`height` divisible by 8, `num_inference_steps` 1–100.
+- **Base gen:** `ImageGeneratorService` — `diffusers.StableDiffusionXLPipeline` (SDXL), lazy `torch`/`diffusers` import per call, `try/except` `torch.cuda.OutOfMemoryError` → `ImageGenerationResourceError`, `finally` `del pipeline`, `gc.collect()`, `torch.cuda.empty_cache()`.
+- **Upscale:** `UpscalerService` — default 2× bicubic via `torch.nn.functional.interpolate` (optional injected `upscale_backend` for Real-ESRGAN / latents later), `try/finally` cache clear.
+- **Orchestrator:** `run_stockflow_orchestrator` — `MetadataService` → VRAM release → `generate_base_image` → release → `upscale_image` → save JPEG/PNG path → `append_adobe_stock_row`. Deletes PIL handles and calls `gc` / `empty_cache` between stages.
+- **Metadata & CSV (Phase 1):** `AdobeStockMetadata`, `MetadataService`, `append_adobe_stock_row` unchanged in contract.
+- **Tests:** Unit tests mock `diffusers` / Ollama; `pytest -m integration` runs `tests/integration/test_real_image_gen.py` (skips if no CUDA; set `STOCKFLOW_SDXL_MODEL` to override default `stabilityai/stable-diffusion-xl-base-1.0`).
 
 ## Next.js frontend
 
@@ -20,13 +20,14 @@
 
 ## VRAM / optimization
 
-- **Planned:** Sequential load — LLM → unload → diffusion → unload → upscale; explicit `torch.cuda.empty_cache()` in services (not applicable until Phase 2).
+- **Pipeline:** Unload SDXL via `del pipeline` + `gc` + `empty_cache` after each base generation; same after upscale. Orchestrator calls empty cache between LLM (CPU) and image, and before CSV.
+- **Not yet:** 12–24 MP preset wiring (upscaler is 2× default); Real-ESRGAN weights.
 
 ## Next steps
 
-1. **Phase 2 — Image generation:** TDD `ImageGenerationService` with mocked `diffusers` pipelines; resolution presets (preview vs upscaled 12–24 MP path); VRAM-safe sequencing per workspace rules.
-2. FastAPI routes: metadata generation, CSV export path, generation job + SSE.
-3. Scaffold Next.js app in `AssetForge/frontend` and connect `GenerationStudioCard` to APIs.
+1. **Phase 3 — API:** FastAPI routes, Pydantic bodies, SSE/WebSocket progress, background jobs.
+2. Frontend: Next.js app + `GenerationStudioCard` + queue.
+3. Optional: replace bicubic with Real-ESRGAN / latent SDXL upscaler; add `pytest` performance budget (Tier-1 suite dominated by first `diffusers` import ~5s).
 
 ## Quick links
 
@@ -34,4 +35,4 @@
 - Metadata model: `backend/app/models/adobe_stock_metadata.py`
 - Metadata service: `backend/app/services/metadata_service.py`
 - CSV utility: `backend/app/utils/csv_manifest.py`
-- Tests: `backend/tests/`
+- Tests: `backend/tests/` — integration: `backend/tests/integration/test_real_image_gen.py`, output artifacts under `tests/integration/output/` (gitignored).
