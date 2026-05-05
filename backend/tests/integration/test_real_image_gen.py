@@ -35,7 +35,7 @@ def test_real_sdxl_generates_low_res_image() -> None:
         prompt="a red apple on white background",
         width=512,
         height=512,
-        num_inference_steps=2,
+        num_inference_steps=40,
     )
 
     image = svc.generate_base_image(req)
